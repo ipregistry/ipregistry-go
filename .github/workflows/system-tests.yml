@@ -28,6 +28,7 @@ jobs:
         with:
           go-version: 'stable'
           check-latest: true
+          cache: false # no go.sum: the library has zero dependencies
 
       - name: Run system tests
         env:
