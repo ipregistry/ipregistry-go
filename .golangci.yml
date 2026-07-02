@@ -1,0 +1,49 @@
+# golangci-lint configuration (schema v2). See https://golangci-lint.run.
+version: "2"
+
+run:
+  # Include integration-tagged files so the live system tests are linted too.
+  build-tags:
+    - integration
+
+linters:
+  # Start from the standard set (errcheck, govet, ineffassign, staticcheck,
+  # unused) and add a curated selection of high-signal linters.
+  default: standard
+  enable:
+    - bodyclose    # HTTP response bodies must be closed
+    - gocritic     # opinionated but useful diagnostics
+    - misspell     # typos in comments and strings
+    - revive       # golint successor: style and naming
+    - unconvert    # redundant type conversions
+    - usestdlibvars # prefer stdlib constants (e.g. http.StatusOK)
+  settings:
+    revive:
+      rules:
+        - name: exported          # exported identifiers should be documented
+        - name: package-comments
+        - name: var-naming         # enforces initialisms (IP, API, ...)
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - std-error-handling
+    rules:
+      # Test helpers may ignore errors on best-effort teardown / fixtures.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - bodyclose
+      # Godoc examples intentionally use log.Fatal for brevity.
+      - path: example_test\.go
+        linters:
+          - gocritic
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/ipregistry/ipregistry-go

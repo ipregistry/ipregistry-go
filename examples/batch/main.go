@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -15,9 +16,15 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	apiKey := os.Getenv("IPREGISTRY_API_KEY")
 	if apiKey == "" {
-		log.Fatal("set IPREGISTRY_API_KEY")
+		return errors.New("set IPREGISTRY_API_KEY")
 	}
 
 	client := ipregistry.New(apiKey,
@@ -29,7 +36,7 @@ func main() {
 
 	list, err := client.LookupBatch(context.Background(), ips)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	for i, ip := range ips {
@@ -40,4 +47,5 @@ func main() {
 		}
 		fmt.Printf("%-40s %s\n", ip, info.Location.Country.Name)
 	}
+	return nil
 }

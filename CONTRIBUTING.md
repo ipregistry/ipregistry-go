@@ -14,7 +14,7 @@ make race        # run tests with the race detector
 make cover       # print total coverage
 make vet         # go vet
 make fmtcheck    # fail if any file is not gofmt-clean
-make lint        # staticcheck (install: go install honnef.co/go/tools/cmd/staticcheck@latest)
+make lint        # golangci-lint (install: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest)
 make all         # fmtcheck + vet + test
 ```
 

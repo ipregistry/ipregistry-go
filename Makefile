@@ -31,9 +31,9 @@ fmtcheck:
 tidy:
 	go mod tidy
 
-# Requires: go install honnef.co/go/tools/cmd/staticcheck@latest
+# Requires: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 lint:
-	staticcheck ./...
+	golangci-lint run ./...
 
 examples:
 	go build ./examples/...

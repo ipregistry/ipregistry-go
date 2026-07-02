@@ -7,6 +7,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -16,9 +17,15 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	apiKey := os.Getenv("IPREGISTRY_API_KEY")
 	if apiKey == "" {
-		log.Fatal("set IPREGISTRY_API_KEY")
+		return errors.New("set IPREGISTRY_API_KEY")
 	}
 
 	ip := "8.8.8.8"
@@ -34,7 +41,7 @@ func main() {
 
 	info, err := client.Lookup(ctx, ip)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	fmt.Printf("IP:       %s (%s)\n", info.IP, info.Type)
@@ -46,4 +53,5 @@ func main() {
 	fmt.Printf("Currency: %s\n", info.Currency.Code)
 	fmt.Printf("Timezone: %s\n", info.TimeZone.ID)
 	fmt.Printf("Threat:   %t\n", info.Security.IsThreat)
+	return nil
 }

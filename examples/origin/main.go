@@ -8,6 +8,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -16,9 +17,15 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	apiKey := os.Getenv("IPREGISTRY_API_KEY")
 	if apiKey == "" {
-		log.Fatal("set IPREGISTRY_API_KEY")
+		return errors.New("set IPREGISTRY_API_KEY")
 	}
 
 	client := ipregistry.New(apiKey)
@@ -26,7 +33,7 @@ func main() {
 
 	origin, err := client.LookupOrigin(context.Background())
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	fmt.Printf("Your IP:  %s\n", origin.IP)
@@ -35,4 +42,5 @@ func main() {
 		fmt.Printf("Browser:  %s %s\n", origin.UserAgent.Name, origin.UserAgent.Version)
 		fmt.Printf("OS:       %s\n", origin.UserAgent.OperatingSystem.Name)
 	}
+	return nil
 }
