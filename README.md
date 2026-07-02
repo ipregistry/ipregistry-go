@@ -109,6 +109,20 @@ client := ipregistry.New("YOUR_API_KEY",
 Only cache misses are sent to the API; if a whole sub-request fails (network or API error), `LookupBatch` returns that
 error, whereas an individual bad address surfaces as a per-entry error as shown above.
 
+### Typed IP addresses
+
+IP addresses are passed as strings, which is how they usually arrive (for example from a request's `X-Forwarded-For`
+header). If you already hold a parsed [`net/netip.Addr`](https://pkg.go.dev/net/netip#Addr), typed convenience methods
+are available and validate the address before sending the request:
+
+```go
+addr := netip.MustParseAddr("8.8.8.8")
+info, err := client.LookupAddr(context.Background(), addr)
+
+addrs := []netip.Addr{netip.MustParseAddr("1.1.1.1"), netip.MustParseAddr("2606:4700:4700::1111")}
+list, err := client.LookupBatchAddr(context.Background(), addrs)
+```
+
 ## Options
 
 Lookups accept options that map to Ipregistry query parameters:

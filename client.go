@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"sync"
@@ -120,6 +121,19 @@ func (c *Client) Lookup(ctx context.Context, ip string, opts ...LookupOption) (*
 	return info, nil
 }
 
+// LookupAddr returns the data associated with the given IP address. It is a
+// typed convenience over Lookup for callers that already hold a netip.Addr
+// (from net/netip); it fails fast with a *ClientError if addr is the zero value.
+//
+// Most callers receive IP addresses as strings — for example from a request's
+// X-Forwarded-For header — and can use Lookup directly.
+func (c *Client) LookupAddr(ctx context.Context, addr netip.Addr, opts ...LookupOption) (*IPInfo, error) {
+	if !addr.IsValid() {
+		return nil, &ClientError{Message: "invalid IP address"}
+	}
+	return c.Lookup(ctx, addr.String(), opts...)
+}
+
 // LookupOrigin returns the data associated with the IP address the request
 // originates from, enriched with parsed User-Agent data. Origin lookups are
 // never cached, because the requester IP is only known from the response.
@@ -185,6 +199,19 @@ func (c *Client) LookupBatch(ctx context.Context, ips []string, opts ...LookupOp
 	}
 
 	return &IPInfoList{Results: results}, nil
+}
+
+// LookupBatchAddr is the netip.Addr variant of LookupBatch. It fails fast with a
+// *ClientError if any address is the zero value.
+func (c *Client) LookupBatchAddr(ctx context.Context, addrs []netip.Addr, opts ...LookupOption) (*IPInfoList, error) {
+	ips := make([]string, len(addrs))
+	for i, addr := range addrs {
+		if !addr.IsValid() {
+			return nil, &ClientError{Message: "invalid IP address at index " + strconv.Itoa(i)}
+		}
+		ips[i] = addr.String()
+	}
+	return c.LookupBatch(ctx, ips, opts...)
 }
 
 // resolveMisses fetches fresh data for the cache-missed IP addresses. It sends a

@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"strings"
 	"sync/atomic"
@@ -173,6 +174,72 @@ func TestDecodeErrorIsClientError(t *testing.T) {
 	var cerr *ClientError
 	if !errors.As(err, &cerr) {
 		t.Fatalf("err = %v, want *ClientError", err)
+	}
+}
+
+func TestLookupAddr(t *testing.T) {
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		io.WriteString(w, `{"ip":"8.8.8.8"}`)
+	}))
+	defer srv.Close()
+
+	client := New("KEY", WithBaseURL(srv.URL))
+
+	info, err := client.LookupAddr(context.Background(), netip.MustParseAddr("8.8.8.8"))
+	if err != nil {
+		t.Fatalf("LookupAddr: %v", err)
+	}
+	if gotPath != "/8.8.8.8" {
+		t.Errorf("path = %q, want /8.8.8.8", gotPath)
+	}
+	if info.IP != "8.8.8.8" {
+		t.Errorf("ip = %q", info.IP)
+	}
+
+	// The zero Addr is rejected client-side without a request.
+	if _, err := client.LookupAddr(context.Background(), netip.Addr{}); err == nil {
+		t.Error("expected an error for the zero netip.Addr")
+	} else {
+		var cerr *ClientError
+		if !errors.As(err, &cerr) {
+			t.Errorf("err = %v, want *ClientError", err)
+		}
+	}
+}
+
+func TestLookupBatchAddr(t *testing.T) {
+	var reqs int32
+	srv := echoBatchServer(t, &reqs)
+	defer srv.Close()
+
+	client := New("KEY", WithBaseURL(srv.URL))
+	addrs := []netip.Addr{
+		netip.MustParseAddr("1.1.1.1"),
+		netip.MustParseAddr("2606:4700:4700::1111"),
+	}
+
+	list, err := client.LookupBatchAddr(context.Background(), addrs)
+	if err != nil {
+		t.Fatalf("LookupBatchAddr: %v", err)
+	}
+	if list.Len() != 2 {
+		t.Fatalf("len = %d, want 2", list.Len())
+	}
+	for i, want := range []string{"1.1.1.1", "2606:4700:4700::1111"} {
+		info, err := list.At(i)
+		if err != nil {
+			t.Fatalf("At(%d): %v", i, err)
+		}
+		if info.IP != want {
+			t.Errorf("At(%d).IP = %q, want %q", i, info.IP, want)
+		}
+	}
+
+	// An invalid address is rejected before any request is sent.
+	if _, err := client.LookupBatchAddr(context.Background(), []netip.Addr{{}}); err == nil {
+		t.Error("expected an error for an invalid netip.Addr")
 	}
 }
 
