@@ -111,3 +111,13 @@ jobs:
             --notes-file release-notes.md \
             $prerelease
           echo "Released $TAG: ${{ github.server_url }}/${{ github.repository }}/releases/tag/$TAG"
+
+      - name: Warm the Go module proxy
+        # Go has no package registry to upload to: the pushed tag is the release.
+        # Requesting the new version through the public proxy caches it and makes
+        # the module and its pkg.go.dev docs available promptly. Best-effort.
+        run: |
+          set -euo pipefail
+          module="$(go list -m)"
+          GOPROXY=proxy.golang.org GOFLAGS=-mod=mod go list -m "${module}@${TAG}" || \
+            echo "::warning::Proxy warm-up did not complete; the module will still be fetched on first use."
