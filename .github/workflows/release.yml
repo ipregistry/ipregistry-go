@@ -1,0 +1,113 @@
+name: Release
+
+# Manually triggered full release: validates the version, runs the test gate,
+# creates the vX.Y.Z tag, and publishes a GitHub Release whose notes are taken
+# from the matching section of CHANGELOG.md.
+#
+# The CHANGELOG must already contain a "## [X.Y.Z] - <date>" section for the
+# version being released.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, e.g. 1.2.0 or v1.2.0'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: 'stable'
+          check-latest: true
+          cache: false # no go.sum: the library has zero dependencies
+
+      - name: Validate version
+        # The raw input is passed through the environment (never interpolated
+        # into the shell) and strictly validated before any further use.
+        env:
+          VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          version="${VERSION_INPUT#v}"
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::Invalid version '$VERSION_INPUT'. Expected semver such as 1.2.0 or v1.2.0."
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "TAG=v$version" >> "$GITHUB_ENV"
+
+      - name: Ensure tag does not already exist
+        run: |
+          set -euo pipefail
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Tag $TAG already exists locally."
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists on the remote."
+            exit 1
+          fi
+
+      - name: Extract changelog section
+        run: |
+          set -euo pipefail
+          awk -v ver="$VERSION" '
+            $0 ~ ("^## \\[" ver "\\]") { capture=1; next }
+            capture && (/^## / || /^\[[^][]+\]:[[:space:]]/) { exit }
+            capture { print }
+          ' CHANGELOG.md | sed -e '/./,$!d' > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::No changelog section found for [$VERSION] in CHANGELOG.md."
+            exit 1
+          fi
+          echo "Release notes for $TAG:"
+          echo "----------------------------------------"
+          cat release-notes.md
+          echo "----------------------------------------"
+
+      - name: Run local tests (unit and behavior)
+        run: |
+          go vet ./...
+          go test -race ./...
+
+      - name: Run system tests (live API)
+        env:
+          IPREGISTRY_API_KEY: ${{ secrets.IPREGISTRY_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${IPREGISTRY_API_KEY:-}" ]; then
+            echo "::error::IPREGISTRY_API_KEY secret is required to run system tests before a release."
+            exit 1
+          fi
+          go test -tags integration -run Integration -v ./...
+
+      - name: Create tag and GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          prerelease=""
+          case "$VERSION" in
+            *-*) prerelease="--prerelease" ;;
+          esac
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --notes-file release-notes.md \
+            $prerelease
+          echo "Released $TAG: ${{ github.server_url }}/${{ github.repository }}/releases/tag/$TAG"
