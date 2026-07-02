@@ -3,7 +3,7 @@
 
 [![License](http://img.shields.io/:license-apache-blue.svg)](LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/github.com/ipregistry/ipregistry-go.svg)](https://pkg.go.dev/github.com/ipregistry/ipregistry-go)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ipregistry/ipregistry-go)](https://goreportcard.com/report/github.com/ipregistry/ipregistry-go)
+[![Go CI](https://github.com/ipregistry/ipregistry-go/actions/workflows/go.yml/badge.svg)](https://github.com/ipregistry/ipregistry-go/actions/workflows/go.yml)
 
 This is the official Go client library for the [Ipregistry](https://ipregistry.co) IP geolocation and threat data
 API, allowing you to look up your own IP address or specified ones. Responses return multiple data points including
