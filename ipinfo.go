@@ -98,8 +98,11 @@ const (
 // Connection holds network connection information for the IP address.
 type Connection struct {
 	// ASN is the Autonomous System Number, or nil when unknown.
-	ASN          *int64         `json:"asn,omitempty"`
-	Domain       string         `json:"domain,omitempty"`
+	ASN    *int64 `json:"asn,omitempty"`
+	Domain string `json:"domain,omitempty"`
+	// IsAnycast reports whether the IP address is announced via anycast,
+	// i.e. simultaneously from multiple locations.
+	IsAnycast    bool           `json:"is_anycast"`
 	Organization string         `json:"organization,omitempty"`
 	Route        string         `json:"route,omitempty"`
 	Type         ConnectionType `json:"type,omitempty"`

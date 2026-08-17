@@ -34,7 +34,7 @@ func TestLookup(t *testing.T) {
 		gotPath = r.URL.Path
 		gotQuery = r.URL.RawQuery
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"ip":"8.8.8.8","type":"IPv4","location":{"country":{"name":"United States","code":"US"}},"connection":{"asn":15169,"organization":"Google"}}`)
+		io.WriteString(w, `{"ip":"8.8.8.8","type":"IPv4","location":{"country":{"name":"United States","code":"US"}},"connection":{"asn":15169,"is_anycast":true,"organization":"Google"}}`)
 	}))
 	defer srv.Close()
 
@@ -63,6 +63,9 @@ func TestLookup(t *testing.T) {
 	}
 	if info.Connection.ASN == nil || *info.Connection.ASN != 15169 {
 		t.Errorf("asn = %v, want 15169", info.Connection.ASN)
+	}
+	if !info.Connection.IsAnycast {
+		t.Errorf("is_anycast = false, want true")
 	}
 	if info.Type != IPTypeIPv4 {
 		t.Errorf("type = %q, want IPv4", info.Type)
